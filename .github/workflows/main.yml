@@ -1,0 +1,111 @@
+name: Build Static PHP
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      spc_url:
+        description: 'spc 下载地址'
+        required: true
+        default: 'https://dl.static-php.dev/v3/spc-bin/nightly/spc-linux-x86_64'
+      php_version:
+        description: 'PHP 版本'
+        required: true
+        default: '8.4'
+      extensions:
+        description: '扩展列表'
+        required: true
+        default: 'amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,parallel,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,swoole,sysvmsg,sysvsem,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib'
+      dl_parallel:
+        description: '下载并行数'
+        required: true
+        default: '10'
+      dl_retry:
+        description: '下载重试次数'
+        required: true
+        default: '5'
+      dl_ignore_cache:
+        description: '忽略下载缓存'
+        required: false
+        default: 'php-src'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Prepare env
+      run: |
+        EXTENSIONS="${{ github.event.inputs.extensions }}"
+        PHP_VERSION="${{ github.event.inputs.php_version }}"
+        SPC_URL="${{ github.event.inputs.spc_url }}"
+        DL_PARALLEL="${{ github.event.inputs.dl_parallel }}"
+        DL_RETRY="${{ github.event.inputs.dl_retry }}"
+        DL_IGNORE_CACHE="${{ github.event.inputs.dl_ignore_cache }}"
+
+        echo "EXTENSIONS=$EXTENSIONS" >> "$GITHUB_ENV"
+        echo "PHP_VERSION=$PHP_VERSION" >> "$GITHUB_ENV"
+        echo "SPC_URL=$SPC_URL" >> "$GITHUB_ENV"
+        echo "DL_PARALLEL=$DL_PARALLEL" >> "$GITHUB_ENV"
+        echo "DL_RETRY=$DL_RETRY" >> "$GITHUB_ENV"
+        echo "DL_IGNORE_CACHE=$DL_IGNORE_CACHE" >> "$GITHUB_ENV"
+        echo "FILE_DATE=$(date +'%Y%m%d%H%M%S')" >> "$GITHUB_ENV"
+        echo "PHP_VERSION_SHORT=$(echo $PHP_VERSION | tr -d '.')" >> "$GITHUB_ENV"
+
+    - name: Download spc
+      run: |
+        curl -#fSL "${{ env.SPC_URL }}" -o spc && chmod +x spc
+
+    - name: Doctor
+      run: |
+        ./spc doctor --auto-fix
+
+    - name: Build
+      run: |
+        ./spc build:php "${{ env.EXTENSIONS }}" --build-cli --dl-with-php=${{ env.PHP_VERSION }} --dl-parallel=${{ env.DL_PARALLEL }} --dl-retry=${{ env.DL_RETRY }} --dl-ignore-cache=${{ env.DL_IGNORE_CACHE }} --dl-prefer-binary
+
+    - name: Package buildroot
+      run: |
+        if [ ! -d "buildroot/bin" ]; then
+          echo "错误: buildroot/bin 目录不存在"
+          exit 1
+        fi
+        zip -q -r "${{ github.workspace }}/static-php-cli-${{ env.PHP_VERSION }}_${{ env.FILE_DATE }}.zip" buildroot/bin/
+
+    - name: Write release info
+      run: |
+        {
+          echo "## 构建参数"
+          echo ""
+          echo "| 参数 | 值 |"
+          echo "|------|-----|"
+          echo "| spc_url | \`${{ github.event.inputs.spc_url }}\` |"
+          echo "| php_version | \`${{ github.event.inputs.php_version }}\` |"
+          echo "| extensions | \`${{ github.event.inputs.extensions }}\` |"
+          echo "| dl_parallel | \`${{ github.event.inputs.dl_parallel }}\` |"
+          echo "| dl_retry | \`${{ github.event.inputs.dl_retry }}\` |"
+          echo "| dl_ignore_cache | \`${{ github.event.inputs.dl_ignore_cache }}\` |"
+          echo ""
+          echo "## 产物校验"
+          echo ""
+          echo '```'
+          sha256sum static-php-cli-${{ env.PHP_VERSION }}_${{ env.FILE_DATE }}.zip
+          echo '```'
+          echo ""
+          echo "## 产物列表"
+          echo ""
+          echo '```'
+          ls -la static-php-cli-${{ env.PHP_VERSION }}_${{ env.FILE_DATE }}.zip
+          echo '```'
+        } > release.txt
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: static-php_${{ env.PHP_VERSION }}_${{ env.FILE_DATE }}
+        name: static-php ${{ env.PHP_VERSION }} (${{ env.FILE_DATE }})
+        body_path: release.txt
+        files: |
+          release.txt
+          static-php-cli-${{ env.PHP_VERSION }}_${{ env.FILE_DATE }}.zip
