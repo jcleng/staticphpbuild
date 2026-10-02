@@ -31,5 +31,5 @@
 默认扩展：
 
 ```
-amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,swoole,sysvmsg,sysvsem,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib
+amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,sysvmsg,sysvsem,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib
 ```
