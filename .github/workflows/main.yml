@@ -61,7 +61,33 @@ jobs:
 
     - name: Build
       run: |
-        ./spc build:php "${{ env.EXTENSIONS }}" --build-cli --dl-with-php=${{ env.PHP_VERSION }} --dl-parallel=${{ env.DL_PARALLEL }} --dl-retry=${{ env.DL_RETRY }} --dl-ignore-cache=${{ env.DL_IGNORE_CACHE }} --dl-prefer-binary
+        ./spc build:php "${{ env.EXTENSIONS }}" --build-cli --dl-with-php=${{ env.PHP_VERSION }} --dl-parallel=${{ env.DL_PARALLEL }} --dl-retry=${{ env.DL_RETRY }} --dl-ignore-cache=${{ env.DL_IGNORE_CACHE }} --dl-prefer-binary -vv
+
+    - name: Dump build logs on failure
+      if: failure()
+      run: |
+        echo "================ spc.output.log (tail) ================"
+        if [ -f log/spc.output.log ]; then
+          tail -n 200 log/spc.output.log
+        else
+          echo "log/spc.output.log not found"
+        fi
+        echo "================ spc.shell.log (tail) ================"
+        if [ -f log/spc.shell.log ]; then
+          tail -n 200 log/spc.shell.log
+        else
+          echo "log/spc.shell.log not found"
+        fi
+
+    - name: Upload build logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: spc-build-logs-${{ env.PHP_VERSION }}_${{ env.FILE_DATE }}
+        path: |
+          log/spc.output.log
+          log/spc.shell.log
+        if-no-files-found: warn
 
     - name: Package buildroot
       run: |
