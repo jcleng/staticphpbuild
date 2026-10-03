@@ -11,7 +11,7 @@ on:
       php_version:
         description: 'PHP 版本'
         required: true
-        default: '8.4'
+        default: '8.2'
       extensions:
         description: '扩展列表'
         required: true
