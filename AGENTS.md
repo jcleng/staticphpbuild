@@ -17,20 +17,25 @@ to build a static PHP CLI and publish it to a GitHub Release.
 ## Current default configuration (as of latest commit)
 
 - **`php_version` default = `8.2`** (changed from `8.4` in commit `8535769`).
-- **`swoole` is removed** from the default `extensions` list (commit `9d6291d`).
+- **`swoole` is INCLUDED** in the default `extensions` list again. The upstream
+  swoole-src v6.2.3 `nlohmann/json` vs PHP `snprintf` macro collision (failure #1) is
+  now worked around by building swoole from a patched fork via the `swoole_custom_git`
+  workflow input (see `fix/php-snprintf-macro` on `jcleng/swoole-src`).
 - On success, the workflow also extracts the standalone `buildroot/bin/php` binary and
   publishes it alongside the zip (commit `909618c`).
 
-> ⚠️ **README is out of date**: `README.md` parameter table still says `php_version`
-> default is `8.4`. The workflow (`8.2`) is authoritative. Fix the README rather than
-> copying from it.
+> ✅ README is now in sync with the workflow (`php_version` default `8.2`, `swoole` in the
+> default `extensions` list, plus the `swoole_custom_git` input). No longer out of date.
 
 ## Extension-list gotchas
 
-- `swoole` was **intentionally removed** from the default list: it does NOT compile
-  against the current spc nightly, on **either PHP 8.2 or 8.4** (see "Known failures"
-  below). Do not re-add it unless that is resolved. The upstream issue is
-  [crazywhalecc/static-php-cli#1246](https://github.com/crazywhalecc/static-php-cli/issues/1246).
+- `swoole` was **temporarily removed** from the default list because it does NOT compile
+  against the current spc nightly on **either PHP 8.2 or 8.4** (failure #1 below, also
+  reported upstream as [crazywhalecc/static-php-cli#1246](https://github.com/crazywhalecc/static-php-cli/issues/1246),
+  now **CLOSED**). It has since been **re-added** and now builds successfully from a
+  patched fork — see failure #1 for the fix and the `swoole_custom_git` workflow input.
+  Do not re-point it at unpatched `swoole/swoole-src` releases unless that collision is
+  resolved upstream.
 - The full default extension string lives in the workflow `extensions` input; copy it
   verbatim rather than reconstructing it.
 
@@ -39,7 +44,7 @@ to build a static PHP CLI and publish it to a GitHub Release.
 These were diagnosed by adding `-vv` to the build and dumping/uploading
 `log/spc.output.log` + `log/spc.shell.log` as artifacts on failure (commit `ca6264e`).
 
-### 1. swoole 6.2.3 compile error (the reason swoole is disabled)
+### 1. swoole 6.2.3 compile error (the reason swoole was disabled — **FIXED**)
 
 - Symptom: `make cli` fails compiling `ext/swoole/ext-src/swoole_admin_server.cc`.
 - Error:
@@ -53,9 +58,20 @@ These were diagnosed by adding `-vv` to the build and dumping/uploading
   vendors a copy of `nlohmann/json` that calls `(std::snprintf)(...)`, which expands to
   `std::ap_php_snprintf` — but `ap_php_snprintf` only exists in the global namespace,
   not `std`. This is a swoole-src bug (v6.2.3), reproduced identically on PHP 8.2 and
-  8.4. Reported upstream: **static-php-cli#1246** (also relevant: swoole/swoole-src).
+  8.4. Reported upstream: **static-php-cli#1246** (now CLOSED).
 - Affected runs: `36967448557` (8.4), `37115276294` (8.2) — both failed.
-- Workaround: remove `swoole` from the extension list.
+- **Fix (applied in `jcleng/swoole-src`, branch `fix/php-snprintf-macro`):**
+  - In `ext-src/swoole_admin_server.cc`, `#undef snprintf` just before
+    `#include "nlohmann/json.hpp"` (swoole uses `sw_snprintf` elsewhere, so this is safe).
+  - In `thirdparty/nlohmann/detail/input/binary_reader.hpp:273`, `#undef snprintf` at the
+    use site as a belt-and-braces guard.
+  - Repo: `https://github.com/jcleng/swoole-src` · branch:
+    `https://github.com/jcleng/swoole-src/tree/fix/php-snprintf-macro`
+- **How the workflow uses the fix:** the `swoole_custom_git` workflow input
+  (`fix/php-snprintf-macro:https://github.com/jcleng/swoole-src.git`) is passed to spc as
+  `--dl-custom-git=ext-swoole:fix/php-snprintf-macro:https://github.com/jcleng/swoole-src.git`,
+  so spc clones the patched fork instead of the official `swoole/swoole-src` tarball.
+  No spc recompile needed.
 
 ### 2. libde265 GitHub API 403 during download (intermittent)
 
@@ -76,6 +92,10 @@ These were diagnosed by adding `-vv` to the build and dumping/uploading
 
 - Run `36970748509` (PHP 8.4, swoole already removed): **SUCCESS** (1h18m), proving
   the other 50+ extensions build and link fine. This is the template for a good build.
+- Run `37188043846` (PHP 8.2, **swoole re-added** via patched fork
+  `jcleng/swoole-src@fix/php-snprintf-macro`): **SUCCESS** (1h17m). This proves the
+  swoole `snprintf` macro collision is resolved and the full default extension set
+  (incl. swoole) builds and links. Published as Release `static-php_8.2_20261004081015`.
 
 ## Artifacts, release, and secrets
 
