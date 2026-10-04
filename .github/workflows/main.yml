@@ -15,7 +15,11 @@ on:
       extensions:
         description: '扩展列表'
         required: true
-        default: 'amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,sysvmsg,sysvsem,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib'
+        default: 'amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,sysvmsg,sysvsem,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib,swoole'
+      swoole_custom_git:
+        description: 'swoole 自定义源码 git (branch:url)，使用 fork 中已修复 snprintf 宏冲突的源码'
+        required: false
+        default: 'fix/php-snprintf-macro:https://github.com/jcleng/swoole-src.git'
       dl_parallel:
         description: '下载并行数'
         required: true
@@ -41,6 +45,7 @@ jobs:
         DL_PARALLEL="${{ github.event.inputs.dl_parallel }}"
         DL_RETRY="${{ github.event.inputs.dl_retry }}"
         DL_IGNORE_CACHE="${{ github.event.inputs.dl_ignore_cache }}"
+        SWOOLE_CUSTOM_GIT="${{ github.event.inputs.swoole_custom_git }}"
 
         echo "EXTENSIONS=$EXTENSIONS" >> "$GITHUB_ENV"
         echo "PHP_VERSION=$PHP_VERSION" >> "$GITHUB_ENV"
@@ -48,6 +53,7 @@ jobs:
         echo "DL_PARALLEL=$DL_PARALLEL" >> "$GITHUB_ENV"
         echo "DL_RETRY=$DL_RETRY" >> "$GITHUB_ENV"
         echo "DL_IGNORE_CACHE=$DL_IGNORE_CACHE" >> "$GITHUB_ENV"
+        echo "SWOOLE_CUSTOM_GIT=$SWOOLE_CUSTOM_GIT" >> "$GITHUB_ENV"
         echo "FILE_DATE=$(date +'%Y%m%d%H%M%S')" >> "$GITHUB_ENV"
         echo "PHP_VERSION_SHORT=$(echo $PHP_VERSION | tr -d '.')" >> "$GITHUB_ENV"
 
@@ -61,7 +67,11 @@ jobs:
 
     - name: Build
       run: |
-        ./spc build:php "${{ env.EXTENSIONS }}" --build-cli --dl-with-php=${{ env.PHP_VERSION }} --dl-parallel=${{ env.DL_PARALLEL }} --dl-retry=${{ env.DL_RETRY }} --dl-ignore-cache=${{ env.DL_IGNORE_CACHE }} --dl-prefer-binary -vv
+        BUILD_ARGS="--build-cli --dl-with-php=${{ env.PHP_VERSION }} --dl-parallel=${{ env.DL_PARALLEL }} --dl-retry=${{ env.DL_RETRY }} --dl-ignore-cache=${{ env.DL_IGNORE_CACHE }} --dl-prefer-binary -vv"
+        if [ -n "${{ env.SWOOLE_CUSTOM_GIT }}" ]; then
+          BUILD_ARGS="$BUILD_ARGS --dl-custom-git=ext-swoole:${{ env.SWOOLE_CUSTOM_GIT }}"
+        fi
+        ./spc build:php "${{ env.EXTENSIONS }}" $BUILD_ARGS
 
     - name: Dump build logs on failure
       if: failure()
