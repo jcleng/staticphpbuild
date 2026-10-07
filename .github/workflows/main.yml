@@ -15,7 +15,7 @@ on:
       extensions:
         description: '扩展列表'
         required: true
-        default: 'amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,sysvmsg,sysvsem,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib,swoole'
+        default: 'amqp,apcu,bcmath,calendar,ctype,curl,dba,dom,exif,fileinfo,filter,ftp,gd,gmp,grpc,http,iconv,imagick,intl,mbregex,mbstring,mongodb,msgpack,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,sockets,sodium,sqlite3,sysvmsg,sysvsem,sysvshm,tokenizer,xlswriter,xml,xmlreader,xmlwriter,xsl,zip,zlib,swoole,swoole-hook-mysql'
       swoole_custom_git:
         description: 'swoole 自定义源码 git (branch:url)，使用 fork 中已修复 snprintf 宏冲突的源码'
         required: false
@@ -27,7 +27,7 @@ on:
       dl_retry:
         description: '下载重试次数'
         required: true
-        default: '5'
+        default: '50'
       dl_ignore_cache:
         description: '忽略下载缓存'
         required: false
